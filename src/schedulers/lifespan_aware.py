@@ -4,16 +4,12 @@ from src.constants import (
     MLConfig,
     OPTConfig,
     ALPHA,
-    DESTINATION_NODES,
-    RELAY_NODES,
-    SOURCE_NODES,
 )
 from src.time_expanded_graph.time_expanded_graph import (
     TimeExpandedGraph,
     Node,
 )
 from .base_scheduler import BaseScheduler
-from src.topology.contact_plan import Contact
 from src.topology.weights import (
     disabled_contact_time,
     compute_effective_contact_time,
