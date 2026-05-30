@@ -1,22 +1,25 @@
 import csv
+import glob
 import math
 import os
+import pickle
 import sys
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-
-from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.constants import REPORTS_ROOT, PLOTS_ROOT
-
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-from src.constants import REPO_ROOT, REPORTS_ROOT, PLOTS_ROOT
+from src.constants import (
+    DESTINATION_NODES,
+    PLOTS_ROOT,
+    RELAY_NODES,
+    REPORTS_ROOT,
+    SOURCE_NODES,
+)
 
 plt.rcParams.update({"font.size": 18})
 plt.rc("legend", fontsize=14)
@@ -63,32 +66,75 @@ for run in report:
 
 x = sorted(list(set(scenarios)))
 
-# Algorithms: baselines + energy/lifetime-aware contributions
+# ---------------------------------------------------------------------------
+# Algorithm display config — mirrors visualize_metrics_incremental_runs.py
+# (algorithm_key, display_name, linestyle, linewidth, color)
+# ---------------------------------------------------------------------------
 algorithms = [
     # Baselines
     ("lls", "LLS_Greedy", "solid", 2.5, None),
     ("lls_pat_unaware", "LLS_Greedy (ZRK)", "dashed", 2.5, None),
     ("fcp", "FCP", "solid", 2.5, None),
-    # Contributions
+    # Lifespan-aware algorithms
     ("energy_aware", "Energy-Aware", "solid", 2.5, None),
     ("battery_energy", "Battery-Aware", "dashed", 2.5, None),
     ("lifespan_aware", "Lifespan-Aware", "dotted", 2.5, None),
 ]
 
+# (metric_key, unit, y_min, y_max, y_step)
 metrics = [
-    ("Capacity", "terabits/day", 0, 40, 5),
-    ("Capacity by node", "terabits/day", 0, 4, 0.5),
-    ("Wasted capacity", "terabits/day", 0, 70, 10),
-    ("Wasted buffer capacity", "terabits/day", 0, 40, 5),
-    ("Scheduled delay", "hours", 0, 6, 1),
-    ("Jain's fairness index", "", 0.5, 1.0, 0.1),
-    ("Execution duration", "seconds", 0.01, 1e5, 30),
+    ("Capacity", "terabits/day", 0, None, 5),
+    ("Capacity by node", "terabits/day", 0, None, 0.5),
+    ("Wasted capacity", "terabits/day", 0, None, 10),
+    ("Wasted buffer capacity", "terabits/day", 0, None, 5),
+    ("Scheduled delay", "hours", 0, None, 1),
+    ("Jain's fairness index", "", 0, 1.0, 0.1),
+    ("Execution duration", "seconds", 0, 1e2, 30),
 ]
 
-# DTE capacity baseline: 3 ground stations × 86400 s/day × source bit rate (1000 internal units = 267 Mbps)
-_DTE_CAPACITY_TB = (
-    3 * 86400 * 1000 * _BITS_PER_INTERNAL_UNIT / _BITS_PER_TERABIT
+# DTE capacity baseline: count GS nodes from the first scheduled TEG in the
+# report, so the line stays correct regardless of how many ground stations
+# the scenario actually uses.
+_dest_ids = set(DESTINATION_NODES)
+_source_ids = set(SOURCE_NODES)
+_relay_ids = set(RELAY_NODES)
+_pkl_files = sorted(
+    glob.glob(os.path.join(REPORTS_ROOT, str(report_id), "*.pkl"))
 )
+if _pkl_files:
+    with open(_pkl_files[0], "rb") as _f:
+        _sample_teg = pickle.load(_f)
+    _GS_COUNT = sum(1 for n in _sample_teg.nodes if n.id in _dest_ids)
+    del _sample_teg
+else:
+    _GS_COUNT = len(_dest_ids)  # fallback: assume all GS are in use
+
+# Build "source/relay" x-axis labels from actual TEG node counts.
+# Load one PKL per unique num_nodes to get the real counts.
+node_count_to_label: dict[int, str] = {}
+for _nk in x:
+    _candidates = [
+        p
+        for p in _pkl_files
+        if os.path.basename(p).split(".")[0].split("_")[-1] == str(_nk)
+    ]
+    if _candidates:
+        with open(_candidates[0], "rb") as _f:
+            _teg = pickle.load(_f)
+        _src = sum(1 for n in _teg.nodes if n.id in _source_ids)
+        _rly = sum(1 for n in _teg.nodes if n.id in _relay_ids)
+        node_count_to_label[_nk] = f"{_src}/{_rly}"
+        del _teg
+    else:
+        node_count_to_label[_nk] = str(_nk)
+
+# _GS_COUNT ground stations × 86400 s/day × source bit rate (1000 internal units = 267 Mbps)
+_DTE_CAPACITY_TB = (
+    _GS_COUNT * 86400 * 1000 * _BITS_PER_INTERNAL_UNIT / _BITS_PER_TERABIT
+)
+
+plot_dir = os.path.join(PLOTS_ROOT, str(report_id))
+os.makedirs(plot_dir, exist_ok=True)
 
 for metric, unit, y_min, y_max, y_step in metrics:
     fig = plt.figure()
@@ -133,26 +179,28 @@ for metric, unit, y_min, y_max, y_step in metrics:
 
     if metric == "Execution duration":
         plt.yscale("log")
-        plt.ylim(y_min, y_max)
     elif metric == "Jain's fairness index":
         plt.ylim(y_min, y_max)
     else:
         plt.ylim(max(y_min - y_step, 0), y_max)
-        ax.set_yticks(
-            [y_min] + np.arange(y_step, y_max + 0.01, y_step).tolist()
-        )
+        # ax.set_yticks(
+        #     [y_min] + np.arange(y_step, y_max + 0.01, y_step).tolist()
+        # )
 
-    ax.set_xticks([i for i in x if i % 8 == 0])
-    ax.set_xticklabels([f"{i}/{math.ceil(i / 16)}" for i in x if i % 8 == 0])
+    # Thin ticks when there are too many x values (keep ≤ 12)
+    x_ticks = x if len(x) <= 12 else x[:: math.ceil(len(x) / 12)]
+    x_labels = [node_count_to_label.get(v, str(v)) for v in x_ticks]
+    ax.set_xticks(x_ticks)
+    ax.set_xticklabels(x_labels)
 
     file_name = label.replace(" ", "_").replace("/", "_")
     plt.savefig(
-        os.path.join(PLOTS_ROOT, f"{file_name}.pdf"),
+        os.path.join(plot_dir, f"{file_name}.pdf"),
         format="pdf",
         bbox_inches="tight",
     )
     plt.savefig(
-        os.path.join("analysis", f"{file_name}.png"),
+        os.path.join(plot_dir, f"{file_name}.png"),
         format="png",
         bbox_inches="tight",
         dpi=300,
