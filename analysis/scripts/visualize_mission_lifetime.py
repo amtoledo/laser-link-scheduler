@@ -108,8 +108,8 @@ algorithms = [
 
 # (metric_key, label, unit)  — y-axis is always auto-scaled
 metrics = [
-    ("min_relay_lifetime_days", "Min relay lifetime", "days"),
-    ("mean_relay_lifetime_days", "Mean relay lifetime", "days"),
+    ("min_source_lifetime_days", "Min source lifetime", "days"),
+    ("mean_source_lifetime_days", "Mean source lifetime", "days"),
 ]
 
 
@@ -218,18 +218,18 @@ def _simulate_system_lifetime(
     # Average TX power each node sustained during the mission
     avg_tx_power = total_tx_energy_j / max(mission_duration, 1.0)  # W
 
-    # --- Relay node lifetime with realistic future TX load ---
-    relay_lifetimes: list[float] = []
+    # --- Source node lifetime with realistic future TX load ---
+    source_lifetimes: list[float] = []
 
     for node_idx, node in enumerate(teg.nodes):
-        if node.id not in _RELAY_IDS:
-            continue  # only relay nodes count for system lifetime
+        if node.id not in _SOURCE_IDS:
+            continue  # only source nodes count for system lifetime
 
         p_baseline = float(baseline_powers[node_idx])
         p_required = p_baseline + float(avg_tx_power[node_idx])
 
         if p_required <= 0:
-            relay_lifetimes.append(np.inf)
+            source_lifetimes.append(np.inf)
             continue
 
         # Time until RTG drops below the required power level
@@ -243,18 +243,18 @@ def _simulate_system_lifetime(
         # How long the remaining battery sustains the required power
         battery_buffer = float(battery[node_idx]) / p_required  # seconds
 
-        relay_lifetimes.append(
+        source_lifetimes.append(
             mission_duration + rtg_remaining + battery_buffer
         )
 
-    finite_lt = [lt for lt in relay_lifetimes if np.isfinite(lt)]
+    finite_lt = [lt for lt in source_lifetimes if np.isfinite(lt)]
     min_lt = min(finite_lt) if finite_lt else 0.0
     mean_lt = sum(finite_lt) / len(finite_lt) if finite_lt else 0.0
 
     return {
         "mission_duration_days": mission_duration * _S_TO_DAYS,
-        "min_relay_lifetime_days": min_lt * _S_TO_DAYS,
-        "mean_relay_lifetime_days": mean_lt * _S_TO_DAYS,
+        "min_source_lifetime_days": min_lt * _S_TO_DAYS,
+        "mean_source_lifetime_days": mean_lt * _S_TO_DAYS,
     }
 
 

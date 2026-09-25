@@ -171,8 +171,8 @@ class MLConfig:
     RELAY_BASELINE_POWER_FOR_BASIC_OPERATION = 69.9  # Watts
     GS_BASELINE_POWER_FOR_BASIC_OPERATION = 0.0  # Watts
 
-    SOURCE_NODE_INITIAL_POWER = 70.0  # Watts
-    RELAY_NODE_INITIAL_POWER = 70.0  # Watts
+    SOURCE_NODE_INITIAL_POWER = 125.0  # Watts
+    RELAY_NODE_INITIAL_POWER = 125.0  # Watts
     GS_NODE_INITIAL_POWER = float("inf")
 
     DECAY_RATE = (  # 1.6% per year to seconds

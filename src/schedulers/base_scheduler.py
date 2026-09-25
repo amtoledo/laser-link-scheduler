@@ -54,6 +54,7 @@ class BaseScheduler:
         G.add_weighted_edges_from(edges)
 
         # Perform max weight matching using the blossom algorithm. We leverage the networkx library to do this
+        # return nx.min_weight_matching(G)
         return nx.max_weight_matching(G)
 
     def _build_graph(
