@@ -44,3 +44,14 @@ To run the tests
 ```
 pytest -vv -s
 ```
+
+## Origins
+This project began as a fork of https://github.com/jason-gerard/laser-link-scheduler by Jason Gerard. The core scheduling algorithm, the time-expanded graph model, and the IPN-D scenario set are his work. This repository diverged in October 2025 and is developed independently from that point on.
+
+What this line of work adds on top of the original:
+- Energy and power models for the nodes: RTG output with exponential decay, battery state, transmission energy consumption, and a survivability metric.
+- Mission lifetime modelling, computing how long a node keeps enough power to stay operational under its scheduled transmission load.
+- New schedulers that optimize for node lifetime rather than throughput alone: `LifespanAware`, `EnergyAware`, and `BatteryEnergy`.
+- Analysis scripts and plots for energy consumption, mission lifetime, retargeting delay, and coarse pointing slew, plus a weights grid sweep.
+- Restructuring of the codebase into an `src/` package with a `Node` abstraction, a `Typer` CLI, a `Makefile`, `uv` for dependency management, `ruff` formatting, and `pytest`.
+- Performance work on the hot paths, mainly vectorizing the blossom matching, the weight functions, and the effective contact time computation.
