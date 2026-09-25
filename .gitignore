@@ -11,3 +11,7 @@ analysis/*.json
 !output/.gitkeep
 !output/plots/.gitkeep
 !output/reports/.gitkeep
+
+scenarios/experiments/**/*_teg.pkl
+scenarios/experiments/**/*_teg_scheduled.pkl
+scenarios/experiments/**/contactPlan.json
