@@ -85,6 +85,8 @@ from src.topology.weights import compute_effective_contact_time  # noqa: E402
 plt.rcParams.update({"font.size": 18})
 plt.rc("legend", fontsize=14)
 plt.rcParams.update({"font.family": "Times New Roman"})
+plt.rcParams["pdf.fonttype"] = 42
+plt.rcParams["ps.fonttype"] = 42
 
 _S_TO_DAYS = 1.0 / 86400.0
 _DESTINATION_IDS = set(DESTINATION_NODES)

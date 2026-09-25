@@ -3,6 +3,9 @@ import os
 from matplotlib.patches import Circle, FancyArrow
 import matplotlib.pyplot as plt
 
+plt.rcParams["pdf.fonttype"] = 42
+plt.rcParams["ps.fonttype"] = 42
+
 
 # Starting and target az/el (degrees)
 start_az, start_el = 0, 0
