@@ -23,6 +23,8 @@ from src.time_expanded_graph.time_expanded_graph import (  # noqa: E402
 plt.rcParams.update({"font.size": 22})
 plt.rc("legend", fontsize=16)
 plt.rcParams.update({"font.family": "Times New Roman"})
+plt.rcParams["pdf.fonttype"] = 42
+plt.rcParams["ps.fonttype"] = 42
 
 tegs = []
 

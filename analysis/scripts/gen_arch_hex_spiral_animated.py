@@ -4,6 +4,9 @@ import os
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 
+plt.rcParams["pdf.fonttype"] = 42
+plt.rcParams["ps.fonttype"] = 42
+
 
 # Parameters
 R = 1.0 / 2

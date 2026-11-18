@@ -25,6 +25,8 @@ from src.constants import PLOTS_ROOT
 plt.rcParams.update({"font.size": 18})
 plt.rc("legend", fontsize=14)
 plt.rcParams.update({"font.family": "Times New Roman"})
+plt.rcParams["pdf.fonttype"] = 42
+plt.rcParams["ps.fonttype"] = 42
 
 app = typer.Typer()
 

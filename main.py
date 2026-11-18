@@ -14,12 +14,18 @@ from src.time_expanded_graph.time_expanded_graph import (
 from src.models.pointing_delay import RETARGETING_DELAY_CACHE
 from src.reporting.report_generator import Reporter
 from src.schedulers import SCHEDULER_REGISTER
-from src.topology.weights import EFFECTIVE_CONTACT_TIME_CACHE, COORDINATE_CACHE
 from src.topology.contact_plan import (
     IONContactPlanParser,
     IPNDContactPlanParser,
 )
 from src.utils import FileType, RunTablePrinter, make_fanout_progress_callback
+from src import constants
+from src.power_profile import (
+    apply_power_profile,
+    current_power_profile,
+    write_power_profile,
+)
+import os
 
 
 def experiment_driver(
@@ -101,8 +107,12 @@ def multi_experiment_driver(
     experiment_names: list[str],
     scheduler_names: list[str],
     run_table: RunTablePrinter,
+    store: str = "teg",
 ):
-    reporter = Reporter(write_pkl=True)
+    reporter = Reporter(
+        write_pkl=store in ("teg", "both"),
+        write_summary=store in ("summary", "both"),
+    )
 
     for experiment_name in experiment_names:
         # Run table progress setup.
@@ -157,6 +167,7 @@ def multi_experiment_driver(
             run_table.update_result(experiment_name, scheduler_name, run_data)
 
     report_id = reporter.write_report()
+    write_power_profile(os.path.join(constants.REPORTS_ROOT, f"{report_id}"))
     print(f"\nreport_id={report_id}")
 
 
@@ -182,14 +193,73 @@ def main(
         "--debug",
         help="Disable the live run table. Useful when debugging with pdb/ipdb.",
     ),
+    p_tx: float | None = typer.Option(
+        None, "--p-tx", help="Electrical OCT power while transmitting [W]."
+    ),
+    p_base: float | None = typer.Option(
+        None,
+        "--p-base",
+        help="Spacecraft baseline load [W] (sources and relays).",
+    ),
+    p0: float | None = typer.Option(
+        None, "--p0", help="Initial RTG power [W] (sources and relays)."
+    ),
+    rho: float | None = typer.Option(
+        None,
+        "--rho",
+        help="Margin ratio (P0 - P_base) / P_tx; sets P0 from P_base and P_tx.",
+    ),
+    relay_rho: float | None = typer.Option(
+        None,
+        "--relay-rho",
+        help="Margin ratio for relays only (overrides --rho).",
+    ),
+    battery_wh: float | None = typer.Option(
+        None, "--battery-wh", help="Battery capacity per spacecraft [Wh]."
+    ),
+    battery_reserve: float | None = typer.Option(
+        None,
+        "--battery-reserve",
+        help="Fraction of the battery lls_budget never plans to use (1.0 = energy-neutral).",
+    ),
+    old_source_rho: float | None = typer.Option(
+        None,
+        "--old-source-rho",
+        help="Mixed-age fleet: margin ratio of the 'old' sources (the rest keep --rho).",
+    ),
+    old_source_fraction: float = typer.Option(
+        0.5,
+        "--old-source-fraction",
+        help="Expected share of sources that are 'old' (fixed pseudo-random subset).",
+    ),
+    store: str = typer.Option(
+        "teg",
+        "--store",
+        help="What each report keeps per run: 'teg' (scheduled TEG pickle, default), "
+        "'summary' (per-node transmit time and source data, src/reporting/run_summary.py) or 'both'.",
+    ),
 ):
     np.random.seed(42)
+    apply_power_profile(
+        p_base=p_base,
+        p_tx=p_tx,
+        p0=p0,
+        rho=rho,
+        relay_rho=relay_rho,
+        battery_wh=battery_wh,
+        battery_reserve=battery_reserve,
+        old_source_rho=old_source_rho,
+        old_source_fraction=old_source_fraction,
+    )
+    print(f"power profile: {current_power_profile()}")
     with RunTablePrinter(
         experiment_names,
         scheduler_names,
         enable_live=not plain_progress,
     ) as run_table:
-        multi_experiment_driver(experiment_names, scheduler_names, run_table)
+        multi_experiment_driver(
+            experiment_names, scheduler_names, run_table, store
+        )
 
 
 if __name__ == "__main__":

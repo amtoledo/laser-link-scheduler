@@ -179,6 +179,16 @@ class MLConfig:
         0.016 / (365.25 * 24 * 60 * 60)
     )
 
+    # Energy-budget scheduler (lls_budget). Each spacecraft may spend on transmission, per budget period,
+    # the RTG surplus over its baseline load plus the battery energy above the reserve fraction.
+    # A reserve of 1.0 means the battery is never planned for use (strictly energy-neutral schedule).
+    BUDGET_PERIOD = 86_400  # seconds
+    BATTERY_RESERVE_FRACTION = 1.0
+
+    # Per-node initial RTG power overrides {node_id: P0 [W]} for heterogeneous fleets
+    # (set by src/power_profile.py, e.g. --old-source-rho / --old-source-fraction).
+    P0_OVERRIDES: dict[str, float] = {}
+
     RELAY_NODE_INITIAL_BATTERY = 1000.0  # Watt-hours
     SOURCE_NODE_INITIAL_BATTERY = 1000.0  # Watt-hours
     GS_NODE_INITIAL_BATTERY = float("inf")
@@ -212,7 +222,9 @@ class MLConfig:
 
     @classmethod
     def get_initial_power(cls, node_id: str):
-        # Obtain the mission lifetime by satellite type
+        # Per-node override first (heterogeneous fleets), then by satellite type
+        if node_id in cls.P0_OVERRIDES:
+            return cls.P0_OVERRIDES[node_id]
         return (
             cls.RELAY_NODE_INITIAL_POWER
             if node_id in RELAY_NODES
@@ -225,7 +237,7 @@ class MLConfig:
     def get_initial_powers(cls, node_ids: np.ndarray) -> np.ndarray:
         node_ids = np.asarray(node_ids)
 
-        return np.select(
+        powers = np.select(
             [
                 np.isin(node_ids, RELAY_NODES),
                 np.isin(node_ids, SOURCE_NODES),
@@ -236,6 +248,10 @@ class MLConfig:
             ],
             default=cls.GS_NODE_INITIAL_POWER,
         )
+        for i, node_id in enumerate(node_ids):
+            if str(node_id) in cls.P0_OVERRIDES:
+                powers[i] = cls.P0_OVERRIDES[str(node_id)]
+        return powers
 
     @classmethod
     def get_initial_battery(cls, node_id: str):
@@ -277,8 +293,12 @@ class OCTConfig:
     - Duration of a single PPM time slot
     """
 
-    AVG_TRANSMISSION_POWER = 4  # P_avg
+    AVG_TRANSMISSION_POWER = 4  # P_avg (optical output power)
     PEAK_TRANSMISSION_POWER = 64  # P_peak
+    # Electrical power drawn by the OCT while transmitting (laser, amplifier, PAT actuators, detector, modem).
+    # This is the figure every energy model uses as transmission consumption. Defaults to the optical output
+    # power so the WiSEE 2026 results stay reproducible; override with `--p-tx` (see src/power_profile.py).
+    ELECTRICAL_TX_POWER = 4.0  # P_tx [W]
     PAYLOAD_BITS = 4  # m = log2(L)
     SLOTS_PER_SYMBOL = 16  # L = 2^m
     FEC = 2 / 3  # r

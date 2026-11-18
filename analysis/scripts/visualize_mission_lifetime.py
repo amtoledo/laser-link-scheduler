@@ -2,7 +2,7 @@
 mission_lifetime_analysis.py
 
 Loads scheduled TEGs from a report directory, replays the battery simulation
-(using OCTConfig.AVG_TRANSMISSION_POWER, consistent with the scheduler),
+(using OCTConfig.ELECTRICAL_TX_POWER, consistent with the scheduler),
 then estimates how long the relay fleet can keep transmitting after the
 scheduled mission ends.
 
@@ -85,6 +85,8 @@ from src.topology.weights import compute_effective_contact_time  # noqa: E402
 plt.rcParams.update({"font.size": 18})
 plt.rc("legend", fontsize=14)
 plt.rcParams.update({"font.family": "Times New Roman"})
+plt.rcParams["pdf.fonttype"] = 42
+plt.rcParams["ps.fonttype"] = 42
 
 _S_TO_DAYS = 1.0 / 86400.0
 _DESTINATION_IDS = set(DESTINATION_NODES)
@@ -124,7 +126,7 @@ def _simulate_system_lifetime(
 ) -> dict:
     """
     1. Battery simulation (mirrors LifespanAware._update_battery_states):
-       Replay all K states using AVG_TRANSMISSION_POWER; track both the
+       Replay all K states using ELECTRICAL_TX_POWER; track both the
        final battery level and the total TX energy consumed per node.
 
     2. Per-relay lifetime estimate using realistic future TX load:
@@ -195,7 +197,7 @@ def _simulate_system_lifetime(
                 should_bypass_retargeting_time=should_bypass_retargeting_time,
             )
             tx_cost = compute_tx_energy(
-                power=OCTConfig.AVG_TRANSMISSION_POWER, duration=eff_dur
+                power=OCTConfig.ELECTRICAL_TX_POWER, duration=eff_dur
             )
             total_tx_energy_j[tx_node] += tx_cost
 

@@ -25,6 +25,8 @@ from src.time_expanded_graph.time_expanded_graph import (  # noqa: E402
 plt.rcParams.update({"font.size": 18})
 plt.rc("legend", fontsize=14)
 plt.rcParams.update({"font.family": "Times New Roman"})
+plt.rcParams["pdf.fonttype"] = 42
+plt.rcParams["ps.fonttype"] = 42
 
 report_id = 1724036744
 file_name = "lls_mars_earth_simple_scenario.pkl"

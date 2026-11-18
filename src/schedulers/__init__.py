@@ -9,6 +9,7 @@ from .energy_aware import EnergyAware
 from .battery_energy import BatteryEnergy
 from .lifespan_aware import LifespanAware
 from .brute_force import BruteForceScheduler
+from .energy_budget import EnergyBudgetScheduler
 
 __all__ = [
     "BaseScheduler",
@@ -22,6 +23,7 @@ __all__ = [
     "LifespanAware",
     "PathSchedulerModel",
     "LLSModel",
+    "EnergyBudgetScheduler",
 ]
 
 SCHEDULER_REGISTER: dict[str, BaseScheduler] = {
@@ -42,4 +44,6 @@ SCHEDULER_REGISTER: dict[str, BaseScheduler] = {
         should_bypass_retargeting_time=True
     ),
     "lifespan_aware": LifespanAware(),
+    "lls_budget": EnergyBudgetScheduler(),
+    "lls_budget_keep_zero": EnergyBudgetScheduler(drop_zero_gain=False),
 }

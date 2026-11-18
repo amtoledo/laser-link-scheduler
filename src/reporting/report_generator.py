@@ -17,13 +17,16 @@ from src.topology.weights import (
     compute_wasted_capacity,
 )
 from src.utils import FileType
+from src.reporting.run_summary import save_summary, summarize_teg
 
 
 class Reporter:
-    def __init__(self, write_pkl: bool):
+    def __init__(self, write_pkl: bool, write_summary: bool = False):
         self.reports = []
         self.time_expanded_graph_data = []
+        self.summaries = []
         self.write_pkl = write_pkl
+        self.write_summary = write_summary
 
     def generate_report(
         self,
@@ -32,12 +35,14 @@ class Reporter:
         duration: float,
         teg: TimeExpandedGraph,
     ) -> dict[str, str | float | int]:
-        self.time_expanded_graph_data.append(
-            {
-                "name": f"{scheduler_name.replace('_', '-')}_{experiment_name}",
-                "teg": teg,
-            }
-        )
+        name = f"{scheduler_name.replace('_', '-')}_{experiment_name}"
+        if self.write_pkl:
+            self.time_expanded_graph_data.append({"name": name, "teg": teg})
+        if self.write_summary:
+            # Summarize now so the TEG can be garbage-collected (sweeps hold many runs).
+            self.summaries.append(
+                {"name": name, "summary": summarize_teg(teg)}
+            )
 
         # EVAL_EFFECTIVE_CONTACT.clear()
         node_capacities = compute_node_capacities(
@@ -63,14 +68,18 @@ class Reporter:
 
         wasted_buffer_capacity = int(compute_wasted_buffer(node_capacities))
 
-        jains_fairness_index = compute_jains_fairness_index(
-            teg.graphs,
-            teg.state_durations,
-            teg.nodes,
-            teg.K,
-            teg.N,
-            teg.optical_interfaces_to_node,
-        )
+        try:
+            jains_fairness_index = compute_jains_fairness_index(
+                teg.graphs,
+                teg.state_durations,
+                teg.nodes,
+                teg.K,
+                teg.N,
+                teg.optical_interfaces_to_node,
+            )
+        except RuntimeError:
+            # Undefined when nothing was scheduled (e.g. lls_budget with rho <= 0).
+            jains_fairness_index = float("nan")
 
         scheduled_delay = compute_scheduled_delay(
             teg.graphs,
@@ -121,8 +130,15 @@ class Reporter:
 
         os.makedirs(constants.REPORTS_ROOT, exist_ok=True)
 
-        report_dir = os.path.join(constants.REPORTS_ROOT, f"{report_id}")
-        os.mkdir(report_dir)
+        # Back-to-back or parallel runs (e.g. a rho sweep) can finish within the same second;
+        # mkdir is atomic, so claim the first free id.
+        while True:
+            report_dir = os.path.join(constants.REPORTS_ROOT, f"{report_id}")
+            try:
+                os.mkdir(report_dir)
+                break
+            except FileExistsError:
+                report_id += 1
 
         report_path = str(
             os.path.join(
@@ -133,6 +149,12 @@ class Reporter:
             writer = csv.writer(f, delimiter=",", lineterminator="\n")
             writer.writerow(basic_report_headers)
             writer.writerows(self.reports)
+
+        for item in self.summaries:
+            save_summary(
+                os.path.join(report_dir, f"{item['name']}.summary.npz"),
+                item["summary"],
+            )
 
         if not self.write_pkl:
             return report_id
