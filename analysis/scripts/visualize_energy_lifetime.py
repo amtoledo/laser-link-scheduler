@@ -2,7 +2,7 @@
 visualize_energy_lifetime.py
 
 Loads scheduled TEGs from a report directory, replays the battery simulation
-(using OCTConfig.AVG_TRANSMISSION_POWER, consistent with the scheduler),
+(using OCTConfig.ELECTRICAL_TX_POWER, consistent with the scheduler),
 computes energy-consumption and mission-lifetime metrics per
 (algorithm, scenario), and saves one line-plot per metric following the same
 style as visualize_metrics_incremental_runs.py.
@@ -13,7 +13,7 @@ Energy model assumptions (mirrors the scheduler exactly)
 - Recharge      : none  (solar panel model is not yet implemented)
 - Battery       : starts full; only a *deficit* from (baseline + tx − RTG)
                   is drawn from the battery; surpluses are discarded
-- Tx power      : OCTConfig.AVG_TRANSMISSION_POWER (4 W) × effective contact
+- Tx power      : OCTConfig.ELECTRICAL_TX_POWER × effective contact
                   duration (pointing+acquisition delay already subtracted)
 
 Plots produced
@@ -137,7 +137,7 @@ def _simulate_battery(
     The logic intentionally mirrors LifespanAware._update_battery_states():
       - For every active TX optical-interface in each state k, compute the
         effective contact duration (after retargeting delay), multiply by
-        AVG_TRANSMISSION_POWER, and apply the resulting delta to the battery.
+        ELECTRICAL_TX_POWER, and apply the resulting delta to the battery.
       - Surplus RTG energy is NOT stored (solar recharge = 0).
       - Battery is clamped to [0, max_capacity] after each state.
 
@@ -193,7 +193,7 @@ def _simulate_battery(
                 should_bypass_retargeting_time=should_bypass_retargeting_time,
             )
             tx_cost = compute_tx_energy(
-                power=OCTConfig.AVG_TRANSMISSION_POWER, duration=eff_dur
+                power=OCTConfig.ELECTRICAL_TX_POWER, duration=eff_dur
             )
             total_tx_energy_j[tx_node] += tx_cost
 

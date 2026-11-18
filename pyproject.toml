@@ -43,6 +43,8 @@ dependencies = [
 
 [tool.ruff]
 line-length = 79
+# Third-party copy (CPD converter) and app-synced chat attachments are not ours to format.
+extend-exclude = ["scenarios/cpd", "Claude outputs"]
 
 [tool.ruff.lint]
 select = [

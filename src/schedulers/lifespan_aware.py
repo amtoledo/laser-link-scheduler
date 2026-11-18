@@ -109,7 +109,7 @@ class LifespanAware(BaseScheduler):
             tx_node_idx = oi_to_node_idx[tx_oi_idx]
             rx_node_idx = oi_to_node_idx[rx_oi_idx]
             consumed_edge = transmission_energy(
-                power=OCTConfig.AVG_TRANSMISSION_POWER,
+                power=OCTConfig.ELECTRICAL_TX_POWER,
                 duration=compute_effective_contact_time(
                     oi_idx1=tx_oi_idx,
                     oi_idx2=rx_oi_idx,
@@ -184,7 +184,7 @@ class LifespanAware(BaseScheduler):
         for tx_oi_idx, rx_oi_idx in zip(active_tx, active_rx):
             tx_node_idx = oi_to_node_idx[tx_oi_idx]
             consumed_edge = transmission_energy(
-                power=OCTConfig.AVG_TRANSMISSION_POWER,
+                power=OCTConfig.ELECTRICAL_TX_POWER,
                 duration=compute_effective_contact_time(
                     oi_idx1=tx_oi_idx,
                     oi_idx2=rx_oi_idx,
